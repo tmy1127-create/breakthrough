@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>過關任務</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: #f0f4f8;
+            touch-action: manipulation;
+        }
+        .seat-number {
+            cursor: grab;
+            transition: all 0.2s ease;
+            touch-action: none; /* Prevents default touch actions */
+            user-select: none; /* Prevents text selection during drag */
+        }
+        .seat-number:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .seat-number:active {
+            cursor: grabbing;
+        }
+        .column {
+            min-height: 500px;
+        }
+        .task-input {
+            border-bottom: 2px solid #4a5568;
+            transition: all 0.3s ease;
+        }
+        .task-input:focus {
+            border-bottom: 2px solid #3182ce;
+            outline: none;
+        }
+        .footer {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+        }
+        .dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+        }
+        @media (max-width: 768px) {
+            .column {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8 text-indigo-700">過關任務</h1>
+        
+        <div class="flex flex-col md:flex-row gap-4">
+            <!-- 四個欄位，由右至左排列 -->
+            <div id="column4" class="column bg-white rounded-lg shadow-md p-4 flex-1 border-t-4 border-green-500">
+                <input type="text" class="task-input w-full p-2 mb-4 text-lg font-semibold bg-transparent" placeholder="輸入任務名稱...">
+                <div id="drop-area4" class="min-h-[400px] flex flex-wrap gap-2 content-start drop-zone">
+                    <!-- 座號圖將在這裡 -->
+                </div>
+            </div>
+            
+            <div id="column3" class="column bg-white rounded-lg shadow-md p-4 flex-1 border-t-4 border-blue-500">
+                <input type="text" class="task-input w-full p-2 mb-4 text-lg font-semibold bg-transparent" placeholder="輸入任務名稱...">
+                <div id="drop-area3" class="min-h-[400px] flex flex-wrap gap-2 content-start drop-zone"></div>
+            </div>
+            
+            <div id="column2" class="column bg-white rounded-lg shadow-md p-4 flex-1 border-t-4 border-yellow-500">
+                <input type="text" class="task-input w-full p-2 mb-4 text-lg font-semibold bg-transparent" placeholder="輸入任務名稱...">
+                <div id="drop-area2" class="min-h-[400px] flex flex-wrap gap-2 content-start drop-zone"></div>
+            </div>
+            
+            <div id="column1" class="column bg-white rounded-lg shadow-md p-4 flex-1 border-t-4 border-red-500">
+                <input type="text" class="task-input w-full p-2 mb-4 text-lg font-semibold bg-transparent" placeholder="輸入任務名稱...">
+                <div id="drop-area1" class="min-h-[400px] flex flex-wrap gap-2 content-start drop-zone"></div>
+            </div>
+        </div>
+        
+        <div class="mt-8 text-center">
+            <p class="text-gray-600 mb-4">完成任務後，將座號拖曳至對應欄位</p>
+            <button id="reset-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors">重置座號位置</button>
+        </div>
+    </div>
+
+    <!-- 小壁虎老師署名 -->
+    <footer class="footer w-full py-4 mt-10">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-center">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    <span class="text-white font-bold text-lg">小壁虎老師</span>
+                </div>
+                <div class="ml-2 px-3 py-1 bg-white bg-opacity-20 rounded-full">
+                    <span class="text-white font-medium">CEO思維的班級經營術</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropArea4 = document.getElementById('drop-area4');
+            const dropArea3 = document.getElementById('drop-area3');
+            const dropArea2 = document.getElementById('drop-area2');
+            const dropArea1 = document.getElementById('drop-area1');
+            const resetBtn = document.getElementById('reset-btn');
+            const dropZones = document.querySelectorAll('.drop-zone');
+            
+            let draggedItem = null;
+            let touchItem = null;
+            
+            // 創建28個座號
+            for (let i = 1; i <= 28; i++) {
+                const seatNumber = document.createElement('div');
+                seatNumber.className = 'seat-number w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center font-bold text-indigo-800 shadow-sm';
+                seatNumber.textContent = i;
+                seatNumber.draggable = true;
+                seatNumber.dataset.seatNumber = i;
+                
+                // 滑鼠拖曳事件
+                seatNumber.addEventListener('dragstart', function(e) {
+                    draggedItem = seatNumber;
+                    setTimeout(() => {
+                        seatNumber.classList.add('opacity-50');
+                    }, 0);
+                });
+                
+                seatNumber.addEventListener('dragend', function() {
+                    seatNumber.classList.remove('opacity-50');
+                    draggedItem = null;
+                });
+                
+                // 觸控事件處理
+                seatNumber.addEventListener('touchstart', handleTouchStart, { passive: false });
+                seatNumber.addEventListener('touchmove', handleTouchMove, { passive: false });
+                seatNumber.addEventListener('touchend', handleTouchEnd, { passive: false });
+                
+                dropArea4.appendChild(seatNumber);
+            }
+            
+            // 觸控事件函數
+            function handleTouchStart(e) {
+                e.preventDefault();
+                touchItem = this;
+                this.classList.add('dragging');
+                
+                // 記錄初始觸摸位置
+                const touch = e.touches[0];
+                this.initialX = touch.clientX;
+                this.initialY = touch.clientY;
+                
+                // 記錄元素初始位置
+                const rect = this.getBoundingClientRect();
+                this.offsetX = this.initialX - rect.left;
+                this.offsetY = this.initialY - rect.top;
+                
+                // 創建一個克隆元素作為拖曳時的視覺反饋
+                this.style.position = 'fixed';
+                this.style.zIndex = 1000;
+                this.style.top = `${rect.top}px`;
+                this.style.left = `${rect.left}px`;
+            }
+            
+            function handleTouchMove(e) {
+                e.preventDefault();
+                if (!touchItem) return;
+                
+                const touch = e.touches[0];
+                const x = touch.clientX - this.offsetX;
+                const y = touch.clientY - this.offsetY;
+                
+                touchItem.style.left = `${x}px`;
+                touchItem.style.top = `${y}px`;
+            }
+            
+            function handleTouchEnd(e) {
+                e.preventDefault();
+                if (!touchItem) return;
+                
+                // 找出目標放置區域
+                const touch = e.changedTouches[0];
+                const x = touch.clientX;
+                const y = touch.clientY;
+                let targetZone = null;
+                
+                // 檢查是否在任何放置區域上方
+                dropZones.forEach(zone => {
+                    const rect = zone.getBoundingClientRect();
+                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                        targetZone = zone;
+                    }
+                });
+                
+                // 重置元素樣式
+                touchItem.style.position = '';
+                touchItem.style.zIndex = '';
+                touchItem.style.top = '';
+                touchItem.style.left = '';
+                touchItem.classList.remove('dragging');
+                
+                // 如果找到目標區域，移動元素
+                if (targetZone) {
+                    targetZone.appendChild(touchItem);
+                    // 添加動畫效果
+                    touchItem.classList.add('scale-110');
+                    setTimeout(() => {
+                        touchItem.classList.remove('scale-110');
+                    }, 300);
+                }
+                
+                touchItem = null;
+            }
+            
+            // 重置按鈕功能
+            resetBtn.addEventListener('click', function() {
+                const allSeatNumbers = document.querySelectorAll('.seat-number');
+                allSeatNumbers.forEach(seat => {
+                    dropArea4.appendChild(seat);
+                });
+            });
+            
+            // 設置拖放區域 (滑鼠)
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    zone.classList.add('bg-gray-100');
+                });
+                
+                zone.addEventListener('dragleave', function() {
+                    zone.classList.remove('bg-gray-100');
+                });
+                
+                zone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    zone.classList.remove('bg-gray-100');
+                    
+                    if (draggedItem) {
+                        zone.appendChild(draggedItem);
+                        
+                        // 添加動畫效果
+                        draggedItem.classList.add('scale-110');
+                        setTimeout(() => {
+                            draggedItem.classList.remove('scale-110');
+                        }, 300);
+                    }
+                });
+            });
+            
+            // 讓輸入框可以保存任務名稱
+            const taskInputs = document.querySelectorAll('.task-input');
+            taskInputs.forEach(input => {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        input.blur();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
